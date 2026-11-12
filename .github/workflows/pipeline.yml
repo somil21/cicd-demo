@@ -1,0 +1,82 @@
+# CI/CD pipeline for the demo.
+#   CI = on every push and pull request: check code style, run the tests, build the site.
+#   CD = only when code reaches the main branch: deploy the site to GitHub Pages.
+name: CI/CD pipeline
+
+on:
+  push:
+    branches: [main]        # code merged or pushed to main
+  pull_request:
+    branches: [main]        # every pull request into main
+  workflow_dispatch:        # adds a "Run workflow" button in the Actions tab
+
+permissions:
+  contents: read            # least privilege: jobs can only read the code
+
+concurrency:
+  group: pipeline-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    name: Test (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]   # two copies of this job run in parallel
+    steps:
+      - name: Get the code
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install tools
+        run: pip install -r requirements.txt
+
+      - name: Check code style (lint)
+        run: ruff check .
+
+      - name: Run the tests
+        run: pytest -v
+
+  build:
+    name: Build website
+    needs: test               # runs only if every test job passed
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get the code
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Build the site
+        run: python scripts/build_site.py
+
+      - name: Save the site as an artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write            # allowed to publish the site
+      id-token: write         # proves to Pages that this run is genuine (OIDC)
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v5
