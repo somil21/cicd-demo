@@ -6,7 +6,7 @@ not by its position, so it still works when a line moves.
 
 # Every field and the label names it can appear under.
 LABELS = {
-    "account_number": ["account number", "account no", "acct no"],
+    "account_number": ["account number", "account no", "billing account"],
     "order_number": ["order number", "order no", "order #"],
     "due_date": ["due date", "delivery date"],
 }

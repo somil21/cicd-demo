@@ -58,3 +58,7 @@ def test_read_all_fields():
         "order_number": "ORD-48213",
         "due_date": "2026-12-14",
     }
+
+
+def test_new_label_billing_account():
+   assert read_field("Billing Account: 100000000123", "account_number") == "100000000123"
